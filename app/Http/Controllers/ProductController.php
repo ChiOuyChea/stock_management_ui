@@ -134,21 +134,24 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
-                'name'        => 'required|string|max:255',
-                'price_in'    => 'required|numeric|min:0',
-                'price_out'   => 'required|numeric|min:0',
-                'stock'       => 'required|integer|min:0',
-                'description' => 'nullable|string',
-            ]);
+            // In store() method
+$validated = $request->validate([
+    'name'        => 'required|string|max:255',
+    'price_in'    => 'required|numeric|min:0',
+    'price_out'   => 'required|numeric|min:0',
+    'stock'       => 'required|integer|min:0',
+    'image'       => 'nullable|url|max:255',  // ✅ Add this
+    'description' => 'nullable|string|max:1000',
+]);
 
-            $apiData = [
-                'name'        => $validated['name'],
-                'quantity'    => (int)$validated['stock'],
-                'price_in'    => (float)$validated['price_in'],
-                'price_out'   => (float)$validated['price_out'],
-                'description' => $validated['description'] ?? '',
-            ];
+$apiData = [
+    'name'        => $validated['name'],
+    'quantity'    => (int)$validated['stock'],
+    'price_in'    => (float)$validated['price_in'],
+    'price_out'   => (float)$validated['price_out'],
+    'image'       => $validated['image'] ?? null,  // ✅ Add this
+    'description' => $validated['description'] ?? '',
+];
 
             $response = Http::post($this->apiUrl, $apiData);
             
@@ -200,21 +203,24 @@ class ProductController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $validated = $request->validate([
-                'name'        => 'required|string|max:255',
-                'price_in'    => 'required|numeric|min:0',
-                'price_out'   => 'required|numeric|min:0',
-                'stock'       => 'required|integer|min:0',
-                'description' => 'nullable|string',
-            ]);
+            // In store() method
+$validated = $request->validate([
+    'name'        => 'required|string|max:255',
+    'price_in'    => 'required|numeric|min:0',
+    'price_out'   => 'required|numeric|min:0',
+    'stock'       => 'required|integer|min:0',
+    'image'       => 'nullable|url|max:255',  // ✅ Add this
+    'description' => 'nullable|string|max:1000',
+]);
 
-            $apiData = [
-                'name'        => $validated['name'],
-                'quantity'    => (int)$validated['stock'],
-                'price_in'    => (float)$validated['price_in'],
-                'price_out'   => (float)$validated['price_out'],
-                'description' => $validated['description'] ?? '',
-            ];
+$apiData = [
+    'name'        => $validated['name'],
+    'quantity'    => (int)$validated['stock'],
+    'price_in'    => (float)$validated['price_in'],
+    'price_out'   => (float)$validated['price_out'],
+    'image'       => $validated['image'] ?? null,  // ✅ Add this
+    'description' => $validated['description'] ?? '',
+];
 
             $response = Http::put("{$this->apiUrl}/{$id}", $apiData);
             

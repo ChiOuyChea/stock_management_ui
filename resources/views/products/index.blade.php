@@ -26,9 +26,6 @@
         <h2 class="mb-1">All Products</h2>
         <p class="text-muted mb-0">Manage your inventory, pricing, and stock levels</p>
     </div>
-    {{-- <a href="{{ route('products.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Add Product
-    </a> --}}
 </div>
 
 <!-- Stats Cards -->
@@ -102,7 +99,7 @@
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Product List</h5>
-        <span class="text-muted small">{{ count($products) }} items found</span>
+        <span class="text-muted small" id="productsCount">{{ count($products) }} items found</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -121,25 +118,41 @@
                 <tbody id="productsBody">
                     @forelse($products as $index => $product)
                     <tr data-name="{{ strtolower($product['name']) }}" 
-                        data-stock="{{ $product['stock'] }}">
+                        data-stock="{{ $product['stock'] }}"
+                        data-id="{{ $product['id'] }}"
+                        data-price-in="{{ $product['price_in'] }}"
+                        data-price-out="{{ $product['price_out'] }}"
+                        data-description="{{ $product['description'] }}">
                         
                         <td class="ps-4">
                             <span class="text-muted">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</span>
                         </td>
                         
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <i class="bi bi-box-seam text-primary"></i>
-                                <div>
-                                    <strong class="d-block">{{ $product['name'] }}</strong>
-                                    @if(!empty($product['description']))
-                                    <small class="text-muted">
-                                        {{ Str::limit($product['description'], 40) }}
-                                    </small>
-                                    @endif
-                                </div>
-                            </div>
-                        </td>
+                       <td>
+    <div class="d-flex align-items-center gap-3">
+        @if(!empty($product['image']))
+        <img src="{{ $product['image'] }}" 
+             alt="{{ $product['name'] }}"
+             class="rounded" 
+             style="width: 50px; height: 50px; object-fit: cover;"
+             onerror="this.src='https://via.placeholder.com/50?text=No+Image'">
+        @else
+        <div class="bg-light rounded d-flex align-items-center justify-content-center"
+             style="width: 50px; height: 50px;">
+            <i class="bi bi-box-seam text-primary" style="font-size: 1.5rem;"></i>
+        </div>
+        @endif
+        
+        <div>
+            <strong class="d-block">{{ $product['name'] }}</strong>
+            @if(!empty($product['description']))
+            <small class="text-muted">
+                {{ Str::limit($product['description'], 40) }}
+            </small>
+            @endif
+        </div>
+    </div>
+</td>
                         
                         <td>
                             <span class="text-muted">${{ number_format($product['price_in'], 2) }}</span>
@@ -203,64 +216,229 @@
         </div>
     </div>
 </div>
-<div class="d-flex justify-content-between align-items-center mb-4">
-    {{-- <div>
-        <h2 class="mb-1">All Products</h2>
-        <p class="text-muted mb-0">Manage your inventory, pricing, and stock levels</p>
-    </div> --}}
+
+<!-- Add Product Button (Bottom) -->
+<div class="d-flex justify-content-end mb-4">
     <a href="{{ route('products.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-2"></i>Add Product
     </a>
 </div>
+
 @endsection
 
 @push('scripts')
 <script>
-// ===== Search and Filter Functionality =====
+// ===== API Search Functionality =====
 const searchInput = document.getElementById('searchInput');
 const statusFilter = document.getElementById('statusFilter');
 const productsBody = document.getElementById('productsBody');
+const productsCount = document.getElementById('productsCount');
 
+// ===== Live Search with API (Debounced) =====
 if (searchInput) {
-    searchInput.addEventListener('input', filterProducts);
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const searchTerm = this.value.trim();
+        
+        if (searchTerm.length >= 2) {
+            // Show loading state
+            showLoadingState();
+            
+            // Search via API after 300ms delay
+            searchTimeout = setTimeout(() => {
+                searchProductsAPI(searchTerm);
+            }, 300);
+        } else if (searchTerm.length === 0) {
+            // Reload all products when search is cleared
+            location.reload();
+        }
+    });
 }
 
+// ===== Search Products via API =====
+async function searchProductsAPI(searchTerm) {
+    try {
+        const response = await fetch(`http://127.0.0.1:3000/api/product/search?name=${encodeURIComponent(searchTerm)}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            renderSearchResults(result.data.items);
+            updateProductsCount(result.data.total);
+        } else {
+            showErrorState('Search failed');
+        }
+    } catch (error) {
+        console.error('Search error:', error);
+        showErrorState('Connection error. Is API running?');
+    }
+}
+
+// ===== Render Search Results =====
+function renderSearchResults(products) {
+    if (!productsBody) return;
+    
+    if (products.length === 0) {
+        productsBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5">
+                    <div class="mb-3" style="font-size: 3rem;">🔍</div>
+                    <h5 class="text-muted mb-2">No products found</h5>
+                    <p class="text-muted mb-0">Try searching with different keywords</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    productsBody.innerHTML = products.map((product, index) => {
+        // Map API fields to UI fields
+        const id = product.id || product._id;
+        const name = product.name || 'Unknown';
+        const stock = product.quantity || product.stock || 0;
+        const priceIn = parseFloat(product.price_in || 0);
+        const priceOut = parseFloat(product.price_out || product.price || 0);
+        const description = product.description || '';
+        
+        // Determine status badge
+        let statusBadge;
+        if (stock > 10) {
+            statusBadge = '<span class="badge badge-success"><i class="bi bi-check-circle me-1"></i>In Stock</span>';
+        } else if (stock > 0) {
+            statusBadge = '<span class="badge badge-warning"><i class="bi bi-exclamation-circle me-1"></i>Low Stock</span>';
+        } else {
+            statusBadge = '<span class="badge badge-danger"><i class="bi bi-x-circle me-1"></i>Out of Stock</span>';
+        }
+        
+        // Stock text color
+        const stockClass = stock <= 5 ? 'text-danger fw-bold' : 'text-dark';
+        
+        return `
+            <tr data-name="${name.toLowerCase()}" 
+                data-stock="${stock}"
+                data-id="${id}"
+                data-price-in="${priceIn}"
+                data-price-out="${priceOut}"
+                data-description="${description.replace(/"/g, '&quot;')}">
+                
+                <td class="ps-4">
+                    <span class="text-muted">${String(index + 1).padStart(2, '0')}</span>
+                </td>
+                
+               <td>
+    <div class="d-flex align-items-center gap-3">
+        ${product.image 
+            ? `<img src="${product.image}" 
+                    alt="${name}"
+                    class="rounded" 
+                    style="width: 50px; height: 50px; object-fit: cover;"
+                    onerror="this.src='https://via.placeholder.com/50?text=No+Image'">`
+            : `<div class="bg-light rounded d-flex align-items-center justify-content-center"
+                    style="width: 50px; height: 50px;">
+                    <i class="bi bi-box-seam text-primary" style="font-size: 1.5rem;"></i>
+               </div>`
+        }
+        
+        <div>
+            <strong class="d-block">${name}</strong>
+            ${description ? `<small class="text-muted">${description.substring(0, 40)}${description.length > 40 ? '...' : ''}</small>` : ''}
+        </div>
+    </div>
+</td>
+                
+                <td>
+                    <span class="text-muted">$${priceIn.toFixed(2)}</span>
+                </td>
+                
+                <td>
+                    <strong class="text-success">$${priceOut.toFixed(2)}</strong>
+                </td>
+                
+                <td>
+                    <span class="${stockClass}">${stock}</span>
+                </td>
+                
+                <td>${statusBadge}</td>
+                
+                <td class="text-end pe-4">
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="/products/${id}/edit" class="btn btn-sm btn-success">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <a href="/products/${id}/delete" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i> Delete
+                        </a>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ===== Update Products Count =====
+function updateProductsCount(count) {
+    if (productsCount) {
+        productsCount.textContent = `${count} items found`;
+    }
+}
+
+// ===== Show Loading State =====
+function showLoadingState() {
+    if (!productsBody) return;
+    
+    productsBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2 mb-0">Searching products...</p>
+            </td>
+        </tr>
+    `;
+}
+
+// ===== Show Error State =====
+function showErrorState(message) {
+    if (!productsBody) return;
+    
+    productsBody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center py-5">
+                <div class="alert alert-danger d-inline-block mb-0">
+                    <i class="bi bi-exclamation-circle me-2"></i>${message}
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// ===== Status Filter (Client-side for current results) =====
 if (statusFilter) {
     statusFilter.addEventListener('change', filterProducts);
 }
 
 function filterProducts() {
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     const statusValue = statusFilter ? statusFilter.value : '';
-    
     const rows = productsBody ? productsBody.querySelectorAll('tr[data-name]') : [];
     
     rows.forEach(row => {
-        const name = row.dataset.name || '';
         const stock = parseInt(row.dataset.stock) || 0;
         
-        // Search match
-        let matchesSearch = name.includes(searchTerm);
-        
-        // Status match
         let matchesStatus = true;
-        if (statusValue === 'instock') {
-            matchesStatus = stock > 10;
-        } else if (statusValue === 'lowstock') {
-            matchesStatus = stock > 0 && stock <= 10;
-        } else if (statusValue === 'outstock') {
-            matchesStatus = stock === 0;
-        }
+        if (statusValue === 'instock') matchesStatus = stock > 10;
+        else if (statusValue === 'lowstock') matchesStatus = stock > 0 && stock <= 10;
+        else if (statusValue === 'outstock') matchesStatus = stock === 0;
         
-        // Show/hide row
-        row.style.display = (matchesSearch && matchesStatus) ? '' : 'none';
+        row.style.display = matchesStatus ? '' : 'none';
     });
 }
 
+// ===== Reset Filters =====
 function resetFilters() {
     if (searchInput) searchInput.value = '';
     if (statusFilter) statusFilter.value = '';
-    filterProducts();
+    location.reload();
 }
 
 // ===== Auto-hide alerts after 5 seconds =====
