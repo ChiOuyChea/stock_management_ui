@@ -259,18 +259,24 @@ if (searchInput) {
 // ===== Search Products via API =====
 async function searchProductsAPI(searchTerm) {
     try {
-        const response = await fetch(`http://127.0.0.1:3000/api/product/search?name=${encodeURIComponent(searchTerm)}`);
+        // ✅ Use 127.0.0.1 instead of localhost
+        const response = await fetch(`http://localhost:3000/api/product?name=${encodeURIComponent(searchTerm)}`);
+        
+        if (!response.ok) {
+            throw new Error('API request failed');
+        }
+        
         const result = await response.json();
         
         if (result.success) {
             renderSearchResults(result.data.items);
             updateProductsCount(result.data.total);
         } else {
-            showErrorState('Search failed');
+            showErrorState(result.message || 'Search failed');
         }
     } catch (error) {
         console.error('Search error:', error);
-        showErrorState('Connection error. Is API running?');
+        showErrorState('Connection error. Is API running on port 3000?');
     }
 }
 
