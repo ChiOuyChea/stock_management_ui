@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Products')
-@section('page-title', 'Inventory Management')
+@section('page-title', 'Stock Management')
 
 @section('content')
 
@@ -26,9 +26,9 @@
         <h2 class="mb-1">All Products</h2>
         <p class="text-muted mb-0">Manage your inventory, pricing, and stock levels</p>
     </div>
-    <a href="{{ route('products.create') }}" class="btn btn-primary">
+    {{-- <a href="{{ route('products.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg me-2"></i>Add Product
-    </a>
+    </a> --}}
 </div>
 
 <!-- Stats Cards -->
@@ -203,7 +203,15 @@
         </div>
     </div>
 </div>
-
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {{-- <div>
+        <h2 class="mb-1">All Products</h2>
+        <p class="text-muted mb-0">Manage your inventory, pricing, and stock levels</p>
+    </div> --}}
+    <a href="{{ route('products.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Add Product
+    </a>
+</div>
 @endsection
 
 @push('scripts')

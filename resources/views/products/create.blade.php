@@ -14,11 +14,31 @@
     </ol>
 </nav>
 
+<!-- Error Messages -->
+@if($errors->any())
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <strong><i class="bi bi-exclamation-circle me-2"></i>Validation Errors!</strong>
+    <ul class="mb-0 mt-2">
+        @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+    <i class="bi bi-exclamation-circle me-2"></i>{{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Product Details</h5>
+                <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Product Details</h5>
             </div>
             <div class="card-body">
                 <form action="{{ route('products.store') }}" method="POST">
@@ -77,9 +97,9 @@
                                min="0" 
                                required 
                                placeholder="0">
-                        @error('stock')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                            @error('stock')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                     </div>
 
                     <div class="mb-3">

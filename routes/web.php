@@ -6,7 +6,7 @@ use App\Http\Controllers\ProductController;
 // Dashboard
 Route::get('/dashboard', [ProductController::class, 'dashboard'])->name('dashboard');
 
-// Products - Resource Routes
+// Products - CRUD Routes
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
 Route::post('/products', [ProductController::class, 'store'])->name('products.store');

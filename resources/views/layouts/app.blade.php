@@ -31,7 +31,7 @@
             <a href="{{ route('products.index') }}" class="nav-link {{ request()->routeIs('products.*') ? 'active' : '' }}">
                 <span class="nav-icon">📦</span> Products
             </a>
-            <a href="#" class="nav-link">
+            {{-- <a href="#" class="nav-link">
                 <span class="nav-icon">📋</span> Orders
             </a>
             <a href="#" class="nav-link">
@@ -39,13 +39,13 @@
             </a>
             <a href="#" class="nav-link">
                 <span class="nav-icon">⚙️</span> Settings
-            </a>
+            </a> --}}
         </nav>
         
         <div class="sidebar-footer">
-            <a href="#" class="logout-link">
+            {{-- <a href="#" class="logout-link">
                 <span>🚪</span> Logout
-            </a>
+            </a> --}}
         </div>
     </aside>
 

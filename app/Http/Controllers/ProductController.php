@@ -59,63 +59,70 @@ class ProductController extends Controller
     }
 
     // Dashboard
-    public function dashboard()
-    {
-        try {
-            $response = Http::get($this->apiUrl);
-            $products = [];
-            
-            if ($response->successful()) {
-                $items = $this->extractItems($response);
-                $products = array_filter(array_map([$this, 'mapProduct'], $items));
-            }
-            
-            $totalProducts = count($products);
-            $totalValue = array_sum(array_column($products, 'price_out'));
-            $lowStock = count(array_filter($products, fn($p) => $p['stock'] > 0 && $p['stock'] <= 10));
-            $outOfStock = count(array_filter($products, fn($p) => $p['stock'] == 0));
-            
-            $recentProducts = array_slice($products, 0, 5);
-            
-            return view('dashboard', compact(
-                'totalProducts',
-                'totalValue',
-                'lowStock',
-                'outOfStock',
-                'recentProducts'
-            ));
-            
-        } catch (\Exception $e) {
-            return view('dashboard', [
-                'totalProducts' => 0,
-                'totalValue' => 0,
-                'lowStock' => 0,
-                'outOfStock' => 0,
-                'recentProducts' => []
-            ]);
-        }
-    }
-
-    // List all products
-    public function index()
-    {
+   public function dashboard()
+{
+    try {
+        $response = Http::get($this->apiUrl);
         $products = [];
         
-        try {
-            $response = Http::timeout(10)->get($this->apiUrl);
+        if ($response->successful()) {
+            $items = $this->extractItems($response);
+            $products = array_filter(array_map([$this, 'mapProduct'], $items));
             
-            if ($response->successful()) {
-                $items = $this->extractItems($response);
-                $products = array_filter(array_map([$this, 'mapProduct'], $items));
-            } else {
-                Log::error('API Error [' . $response->status() . ']: ' . $response->body());
-            }
-        } catch (\Exception $e) {
-            Log::error('API Connection Error: ' . $e->getMessage());
+            // 🔧 REVERSE ARRAY - New products at bottom
+            $products = array_reverse($products);
         }
         
-        return view('products.index', compact('products'));
+        $totalProducts = count($products);
+        $totalValue = array_sum(array_column($products, 'price_out'));
+        $lowStock = count(array_filter($products, fn($p) => $p['stock'] > 0 && $p['stock'] <= 10));
+        $outOfStock = count(array_filter($products, fn($p) => $p['stock'] == 0));
+        
+        // Get first 5 products (oldest) for recent products section
+        $recentProducts = array_slice($products, 0, 5);
+        
+        return view('dashboard', compact(
+            'totalProducts',
+            'totalValue',
+            'lowStock',
+            'outOfStock',
+            'recentProducts'
+        ));
+        
+    } catch (\Exception $e) {
+        return view('dashboard', [
+            'totalProducts' => 0,
+            'totalValue' => 0,
+            'lowStock' => 0,
+            'outOfStock' => 0,
+            'recentProducts' => []
+        ]);
     }
+}
+    // List all products
+    public function index()
+{
+    $products = [];
+    
+    try {
+        $response = Http::timeout(10)->get($this->apiUrl);
+        
+        if ($response->successful()) {
+            $items = $this->extractItems($response);
+            $products = array_filter(array_map([$this, 'mapProduct'], $items));
+            
+            // 🔧 REVERSE ARRAY - New products at bottom
+            $products = array_reverse($products);
+            
+        } else {
+            Log::error('API Error [' . $response->status() . ']: ' . $response->body());
+        }
+    } catch (\Exception $e) {
+        Log::error('API Connection Error: ' . $e->getMessage());
+    }
+    
+    return view('products.index', compact('products'));
+}
 
     // Show create form
     public function create()

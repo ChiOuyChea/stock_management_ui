@@ -21,7 +21,7 @@
                 <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
             </div>
             <div class="card-body text-center py-5">
-                <div class="mb-4" style="font-size: 4rem;">⚠️</div>
+                {{-- <div class="mb-4" style="font-size: 4rem;">⚠️</div> --}}
                 
                 <h4 class="mb-3">Are you sure you want to delete this product?</h4>
                 
