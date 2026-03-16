@@ -200,47 +200,57 @@ $apiData = [
     }
 
     // Update product
-    public function update(Request $request, $id)
-    {
-        try {
-            // In store() method
-$validated = $request->validate([
-    'name'        => 'required|string|max:255',
-    'price_in'    => 'required|numeric|min:0',
-    'price_out'   => 'required|numeric|min:0',
-    'stock'       => 'required|integer|min:0',
-    'image'       => 'nullable|url|max:255',  // ✅ Add this
-    'description' => 'nullable|string|max:1000',
-]);
+   public function update(Request $request, $id)
+{
+    try {
+        // Validate input
+        $validated = $request->validate([
+            'name'        => 'required|string|max:255',
+            'price_in'    => 'required|numeric|min:0',
+            'price_out'   => 'required|numeric|min:0',
+            'stock'       => 'required|integer|min:0',
+            'description' => 'nullable|string|max:1000',
+        ]);
 
-$apiData = [
-    'name'        => $validated['name'],
-    'quantity'    => (int)$validated['stock'],
-    'price_in'    => (float)$validated['price_in'],
-    'price_out'   => (float)$validated['price_out'],
-    'image'       => $validated['image'] ?? null,  // ✅ Add this
-    'description' => $validated['description'] ?? '',
-];
+        // Prepare data for API (map stock → quantity)
+        $apiData = [
+            'name'        => $validated['name'],
+            'quantity'    => (int)$validated['stock'],
+            'price_in'    => (float)$validated['price_in'],
+            'price_out'   => (float)$validated['price_out'],
+            'description' => $validated['description'] ?? '',
+        ];
 
-            $response = Http::put("{$this->apiUrl}/{$id}", $apiData);
-            
-            if ($response->successful()) {
-                return redirect()->route('products.index')
-                    ->with('success', 'Product updated successfully!');
-            }
-            
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to update product');
-                
-        } catch (\Exception $e) {
-            Log::error('Update Error: ' . $e->getMessage());
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Connection error: ' . $e->getMessage());
+        // Log for debugging
+        Log::info('Updating product:', ['id' => $id, 'data' => $apiData]);
+
+        // Send PUT request to API
+        $response = Http::timeout(10)->put("{$this->apiUrl}/{$id}", $apiData);
+
+        // Log response
+        Log::info('API Response:', [
+            'status' => $response->status(),
+            'body' => $response->body()
+        ]);
+
+        if ($response->successful()) {
+            return redirect()->route('products.index')
+                ->with('success', 'Product updated successfully! ✨');
         }
-    }
 
+        // API returned error
+        $errorMsg = $response->json()['message'] ?? 'Failed to update product';
+        return redirect()->back()
+            ->withInput()
+            ->with('error', $errorMsg);
+
+    } catch (\Exception $e) {
+        Log::error('Update Error: ' . $e->getMessage());
+        return redirect()->back()
+            ->withInput()
+            ->with('error', 'Connection error: ' . $e->getMessage());
+    }
+}
     // Show delete confirmation page
     public function showDelete($id)
     {

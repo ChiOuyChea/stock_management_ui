@@ -18,12 +18,24 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">Update Product Details</h5>
+                <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Update Product Details</h5>
             </div>
             <div class="card-body">
+                
+                @if($errors->any())
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
+
+                <!-- IMPORTANT: Method must be PUT -->
                 <form action="{{ route('products.update', $product['id']) }}" method="POST">
                     @csrf
-                    @method('PUT')
+                    @method('PUT')  <!-- THIS IS CRITICAL! -->
                     
                     <div class="mb-3">
                         <label class="form-label">Product Name <span class="text-danger">*</span></label>
@@ -78,34 +90,21 @@
                                min="0" 
                                required 
                                placeholder="0">
-                        @error('stock')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                            @error('stock')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                     </div>
 
                     <div class="mb-3">
-    <label class="form-label">Image URL <span class="text-muted">(Optional)</span></label>
-    <input type="url" 
-           class="form-control @error('image') is-invalid @enderror" 
-           name="image" 
-           value="{{ old('image', $product['image']) }}"
-           placeholder="https://example.com/product-image.jpg">
-    <small class="text-muted">Enter a direct link to the product image</small>
-    @error('image')
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
-</div>
-
-<div class="mb-3">
-    <label class="form-label">Description</label>
-    <textarea class="form-control @error('description') is-invalid @enderror" 
-              name="description" 
-              rows="4" 
-              placeholder="Product description...">{{ old('description', $product['description']) }}</textarea>
-    @error('description')
-        <div class="invalid-feedback">{{ $message }}</div>
-    @enderror
-</div>
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control @error('description') is-invalid @enderror" 
+                                  name="description" 
+                                  rows="4" 
+                                  placeholder="Product description...">{{ old('description', $product['description']) }}</textarea>
+                        @error('description')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
 
                     <div class="d-flex gap-3">
                         <button type="submit" class="btn btn-primary">

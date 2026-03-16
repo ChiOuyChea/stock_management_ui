@@ -1,4 +1,3 @@
-// 🔧 Change all fetch URLs from /api/products to /api/product
 
 // CREATE
 await fetch('http://localhost:3000/api/product', {  // ← singular
