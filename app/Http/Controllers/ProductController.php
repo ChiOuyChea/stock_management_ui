@@ -13,37 +13,37 @@ class ProductController extends Controller
     protected function extractItems($response)
     {
         $json = $response->json();
-        
+
         if (isset($json['data']['items']) && is_array($json['data']['items'])) {
             return $json['data']['items'];
         }
-        
+
         if (is_array($json) && !isset($json['success'])) {
             return $json;
         }
-        
+
         return [];
     }
 
     protected function extractItem($response)
     {
         $json = $response->json();
-        
+
         if (isset($json['data']) && is_array($json['data']) && !isset($json['data']['items'])) {
             return $json['data'];
         }
-        
+
         if (isset($json['data']['items']) && is_array($json['data']['items'])) {
             return $json['data']['items'][0] ?? null;
         }
-        
+
         return $json;
     }
 
     protected function mapProduct($product)
     {
         if (!$product) return null;
-        
+
         return [
             'id'          => $product['id'] ?? $product['_id'] ?? null,
             'name'        => $product['name'] ?? 'Unknown',
@@ -59,70 +59,68 @@ class ProductController extends Controller
     }
 
     // Dashboard
-   public function dashboard()
-{
-    try {
-        $response = Http::get($this->apiUrl);
-        $products = [];
-        
-        if ($response->successful()) {
-            $items = $this->extractItems($response);
-            $products = array_filter(array_map([$this, 'mapProduct'], $items));
-            
-            // 🔧 REVERSE ARRAY - New products at bottom
-            $products = array_reverse($products);
+    public function dashboard()
+    {
+        try {
+            $response = Http::get($this->apiUrl);
+            $products = [];
+
+            if ($response->successful()) {
+                $items = $this->extractItems($response);
+                $products = array_filter(array_map([$this, 'mapProduct'], $items));
+
+                // 🔧 REVERSE ARRAY - New products at bottom
+                $products = array_reverse($products);
+            }
+
+            $totalProducts = count($products);
+            $totalValue = array_sum(array_column($products, 'price_out'));
+            $lowStock = count(array_filter($products, fn($p) => $p['stock'] > 0 && $p['stock'] <= 10));
+            $outOfStock = count(array_filter($products, fn($p) => $p['stock'] == 0));
+
+            // Get first 5 products (oldest) for recent products section
+            $recentProducts = array_slice($products, 0, 5);
+
+            return view('dashboard', compact(
+                'totalProducts',
+                'totalValue',
+                'lowStock',
+                'outOfStock',
+                'recentProducts'
+            ));
+        } catch (\Exception $e) {
+            return view('dashboard', [
+                'totalProducts' => 0,
+                'totalValue' => 0,
+                'lowStock' => 0,
+                'outOfStock' => 0,
+                'recentProducts' => []
+            ]);
         }
-        
-        $totalProducts = count($products);
-        $totalValue = array_sum(array_column($products, 'price_out'));
-        $lowStock = count(array_filter($products, fn($p) => $p['stock'] > 0 && $p['stock'] <= 10));
-        $outOfStock = count(array_filter($products, fn($p) => $p['stock'] == 0));
-        
-        // Get first 5 products (oldest) for recent products section
-        $recentProducts = array_slice($products, 0, 5);
-        
-        return view('dashboard', compact(
-            'totalProducts',
-            'totalValue',
-            'lowStock',
-            'outOfStock',
-            'recentProducts'
-        ));
-        
-    } catch (\Exception $e) {
-        return view('dashboard', [
-            'totalProducts' => 0,
-            'totalValue' => 0,
-            'lowStock' => 0,
-            'outOfStock' => 0,
-            'recentProducts' => []
-        ]);
     }
-}
     // List all products
     public function index()
-{
-    $products = [];
-    
-    try {
-        $response = Http::timeout(10)->get($this->apiUrl);
-        
-        if ($response->successful()) {
-            $items = $this->extractItems($response);
-            $products = array_filter(array_map([$this, 'mapProduct'], $items));
-            
-            // 🔧 REVERSE ARRAY - New products at bottom
-            $products = array_reverse($products);
-            
-        } else {
-            Log::error('API Error [' . $response->status() . ']: ' . $response->body());
+    {
+        $products = [];
+
+        try {
+            $response = Http::timeout(10)->get($this->apiUrl);
+
+            if ($response->successful()) {
+                $items = $this->extractItems($response);
+                $products = array_filter(array_map([$this, 'mapProduct'], $items));
+
+                // 🔧 REVERSE ARRAY - New products at bottom
+                $products = array_reverse($products);
+            } else {
+                Log::error('API Error [' . $response->status() . ']: ' . $response->body());
+            }
+        } catch (\Exception $e) {
+            Log::error('API Connection Error: ' . $e->getMessage());
         }
-    } catch (\Exception $e) {
-        Log::error('API Connection Error: ' . $e->getMessage());
+
+        return view('products.index', compact('products'));
     }
-    
-    return view('products.index', compact('products'));
-}
 
     // Show create form
     public function create()
@@ -135,35 +133,40 @@ class ProductController extends Controller
     {
         try {
             // In store() method
-$validated = $request->validate([
-    'name'        => 'required|string|max:255',
-    'price_in'    => 'required|numeric|min:0',
-    'price_out'   => 'required|numeric|min:0',
-    'stock'       => 'required|integer|min:0',
-    'image'       => 'nullable|url|max:255',  // ✅ Add this
-    'description' => 'nullable|string|max:1000',
-]);
+            $validated = $request->validate([
+                'name'        => 'required|string|max:255',
+                'price_in'    => 'required|numeric|min:0',
+                'price_out'   => 'required|numeric|min:0',
+                'stock'       => 'required|integer|min:0',
+                'image'       => 'nullable|url|max:255',  // ✅ Add this
+                'description' => 'nullable|string|max:1000',
+            ]);
 
-$apiData = [
-    'name'        => $validated['name'],
-    'quantity'    => (int)$validated['stock'],
-    'price_in'    => (float)$validated['price_in'],
-    'price_out'   => (float)$validated['price_out'],
-    'image'       => $validated['image'] ?? null,  // ✅ Add this
-    'description' => $validated['description'] ?? '',
-];
+            $apiData = [
+                'name'        => $validated['name'],
+                'quantity'    => (int)$validated['stock'],
+                'price_in'    => (float)$validated['price_in'],
+                'price_out'   => (float)$validated['price_out'],
+            ];
+
+            if (isset($validated['image'])) {
+                $apiData['image'] = $validated['image'];
+            }
+
+            if (isset($validated['description'])) {
+                $apiData['description'] = $validated['description'];
+            }
 
             $response = Http::post($this->apiUrl, $apiData);
-            
+
             if ($response->successful()) {
                 return redirect()->route('products.index')
                     ->with('success', 'Product created successfully!');
             }
-            
+
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Failed to create product');
-                
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
@@ -176,22 +179,21 @@ $apiData = [
     {
         try {
             $response = Http::get("{$this->apiUrl}/{$id}");
-            
+
             if (!$response->successful()) {
                 return redirect()->route('products.index')
                     ->with('error', 'Product not found');
             }
-            
+
             $product = $this->extractItem($response);
             $product = $this->mapProduct($product);
-            
+
             if (!$product || !$product['id']) {
                 return redirect()->route('products.index')
                     ->with('error', 'Product not found');
             }
-            
+
             return view('products.edit', compact('product'));
-            
         } catch (\Exception $e) {
             Log::error('Edit Error: ' . $e->getMessage());
             return redirect()->route('products.index')
@@ -200,73 +202,65 @@ $apiData = [
     }
 
     // Update product
-   public function update(Request $request, $id)
-{
-    try {
-        // Validate input
-        $validated = $request->validate([
-            'name'        => 'required|string|max:255',
-            'price_in'    => 'required|numeric|min:0',
-            'price_out'   => 'required|numeric|min:0',
-            'stock'       => 'required|integer|min:0',
-            'description' => 'nullable|string|max:1000',
-        ]);
+    public function update(Request $request, $id)
+    {
+        try {
+            // Validate input
+            $validated = $request->validate([
+                'name'        => 'required|string|max:255',
+                'price_in'    => 'required|numeric|min:0',
+                'price_out'   => 'required|numeric|min:0',
+                'stock'       => 'required|integer|min:0',
+                'description' => 'nullable|string|max:1000',
+            ]);
 
-        // Prepare data for API (map stock → quantity)
-        $apiData = [
-            'name'        => $validated['name'],
-            'quantity'    => (int)$validated['stock'],
-            'price_in'    => (float)$validated['price_in'],
-            'price_out'   => (float)$validated['price_out'],
-            'description' => $validated['description'] ?? '',
-        ];
+            // Prepare data for API (map stock → quantity)
+            $apiData = [
+                'name'        => $validated['name'],
+                'quantity'    => (int)$validated['stock'],
+                'price_in'    => (float)$validated['price_in'],
+                'price_out'   => (float)$validated['price_out'],
+            ];
 
-        // Log for debugging
-        Log::info('Updating product:', ['id' => $id, 'data' => $apiData]);
+            if (isset($validated['description'])) {
+                $apiData['description'] = $validated['description'];
+            }
 
-        // Send PUT request to API
-        $response = Http::timeout(10)->put("{$this->apiUrl}/{$id}", $apiData);
+            // Send PUT request to API
+            $response = Http::timeout(10)->put("{$this->apiUrl}/{$id}", $apiData);
 
-        // Log response
-        Log::info('API Response:', [
-            'status' => $response->status(),
-            'body' => $response->body()
-        ]);
+            if ($response->successful()) {
+                return redirect()->route('products.index')
+                    ->with('success', 'Product updated successfully! ✨');
+            }
 
-        if ($response->successful()) {
-            return redirect()->route('products.index')
-                ->with('success', 'Product updated successfully! ✨');
+            // API returned error
+            $errorMsg = $response->json()['message'] ?? 'Failed to update product';
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $errorMsg);
+        } catch (\Exception $e) {
+            Log::error('Update Error: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Connection error: ' . $e->getMessage());
         }
-
-        // API returned error
-        $errorMsg = $response->json()['message'] ?? 'Failed to update product';
-        return redirect()->back()
-            ->withInput()
-            ->with('error', $errorMsg);
-
-    } catch (\Exception $e) {
-        Log::error('Update Error: ' . $e->getMessage());
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Connection error: ' . $e->getMessage());
     }
-}
     // Show delete confirmation page
     public function showDelete($id)
     {
         try {
             $response = Http::get("{$this->apiUrl}/{$id}");
-            
+
             if (!$response->successful()) {
                 return redirect()->route('products.index')
                     ->with('error', 'Product not found');
             }
-            
+
             $product = $this->extractItem($response);
             $product = $this->mapProduct($product);
-            
+
             return view('products.delete', compact('product'));
-            
         } catch (\Exception $e) {
             return redirect()->route('products.index')
                 ->with('error', 'Failed to load product');
@@ -278,15 +272,14 @@ $apiData = [
     {
         try {
             $response = Http::delete("{$this->apiUrl}/{$id}");
-            
+
             if ($response->successful()) {
                 return redirect()->route('products.index')
                     ->with('success', 'Product deleted successfully!');
             }
-            
+
             return redirect()->back()
                 ->with('error', 'Failed to delete product');
-                
         } catch (\Exception $e) {
             Log::error('Delete Error: ' . $e->getMessage());
             return redirect()->back()
